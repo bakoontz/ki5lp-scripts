@@ -132,3 +132,7 @@ dbpass = clogpass
 #export_cabrillo_columns = freq mode qso_date qso_time mycall mylocator callsign grid
 #
 
+## Check for duplicates records.  If they exist, display them and
+## prompt to either enter or discard new record.
+## Default:
+#  check_for_dupes = 0

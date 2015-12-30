@@ -54,6 +54,13 @@ echo " "
 
 
 %changelog
+* Tue Dec 29 2015 Brian Koontz AG7KZ <brianko gmail com> 1.0-patch1
+- Added qu (query) command to search for callsigns in logs
+- Modified list_log to accept $suppress_header flag
+- Added get_id to return id(s) associated with callsign
+- Added config flag 'check_for_dupes' to flag user if entered callsign
+  is a dupe (and whether to continue or abort)
+
 * Mon May 18 2015 Ernest Neijenhuis PA3HCM <pa3hcm amsat org> 1.0-1
 - Updated to CLog 1.0.
 

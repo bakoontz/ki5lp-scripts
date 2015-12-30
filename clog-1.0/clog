@@ -48,6 +48,7 @@ my %config = (
 	columns => '80',
 	export_html_columns => 'callsign qso_date qso_time band mode rst_tx rst_rx comments',
 	export_cabrillo_columns => 'qso_date qso_time freq mode mycall rst_tx data_tx callsign rst_rx data_rx',
+    check_for_dupes => '0',
 );
 
 
@@ -94,7 +95,8 @@ sub read_configfile {
 						'list_columns',
 						'columns',
 						'export_html_columns',
-						'export_cabrillo_columns'
+						'export_cabrillo_columns',
+                        'check_for_dupes',
 					] {
 						$config{$var} = $value;
 					}
@@ -120,6 +122,7 @@ sub syntax {
 	print "  clog de[lete] <id>               Delete entry from logbook\n";
 	print "  clog li[st] [<id>]               List all logbook entries, or just <id>\n";
 	print "  clog lo[cator] <locator>         Show bearing and distance for locator\n";
+	print "  clog qu[ery] <callsign>          Query by callsign\n";
 	print "  clog sh[ow] <id>                 Show details for given entry\n";
 	print "  clog st[atistics] <id>           Display logbook totals\n";
 	print "  clog export_adif                 Export logbook in ADIF v1 format\n";
@@ -295,13 +298,51 @@ sub get_type {
 	return ($type);
 }
 
+# Return array of ids associated with callsign.  
+# Returns empty array if callsign not found.
+sub get_id {
+	my $dbh = shift;
+	my $config_ref = shift;
+	my %config = %{$config_ref};
+	my $callsign = shift;
+    my $type = &get_type($callsign);
+    my @id;
+    if($type ne "is_callsign") {
+        return @id;
+    }
+    else {
+        my $query = 'SELECT id FROM qsos WHERE mycall=? AND callsign=?;';
+        my $sth = $dbh->prepare($query);
+        if( !defined($sth->execute($config{'mycall'},$callsign)) ) {
+            return @id;
+        }
+        my @id;
+        my $id;
+        $sth->bind_columns(\$id);
+        $sth->fetch();
+        if(!defined($id)) {
+            return @id;
+        }
+        push(@id, $id);
+        while($sth->fetch()) {
+            push(@id, $id);
+        }
+        return @id;
+    }
+}
+    
+
 # Lists all entries, or just the record with the given ID. The output
 # fits on a 80-character display, so some fields are shortened.
+# Supports optional $suppress_header flag...useful for suppressing
+# header output when iterating through an array of ids (such as might
+# be returned by get_id).  Default is to never suppress header.
 sub list_log {
 	my $dbh = shift;
 	my $config_ref = shift;
 	my %config = %{$config_ref};
 	my $search_id = shift;
+    my $suppress_header = shift;
 	my $query = '';
 	my $band = '';
 	my $column = '';
@@ -376,7 +417,9 @@ sub list_log {
 			}
 		}
 	}
-	print substr($header, 0, $config{'columns'}) . "\n";
+    if(!defined($suppress_header) || !$suppress_header) {
+    	print substr($header, 0, $config{'columns'}) . "\n";
+    }
 	my $line;
 	my $bearing;
 	my $distance;
@@ -636,6 +679,28 @@ sub add_entry {
 	if ($mode eq 'AMTOR') { $mode = 'TOR'; }
 	if ($mode eq 'PACTOR') { $mode = 'PAC'; }
 	if ($mode eq 'CLOVER') { $mode = 'CLO'; }
+
+    # If check_for_dupes is true, then check to make sure callsign
+    # isn't already associated with a record(s).  Prompt user to
+    # continue or abandon.
+    if($config{'check_for_dupes'}) {
+        my @id = &get_id($dbh, \%config, $callsign);
+        if($#id >= 0) {
+            list_log($dbh, \%config, shift(@id));
+            foreach my $id(@id) {
+                list_log($dbh, \%config, $id, 1);
+            }
+            print "Save duplicate record? (Y/n) ";
+            open(IN, "<-") or die "Can't open STDIN for reading!\n";
+            $_ = <IN>;
+            close IN;
+            chop;
+            if($_ eq 'n' || $_ eq 'N') {
+                exit;
+            }
+        }
+    } 
+
 
 	# Now prepare all fields and put then in the database
 	my @now = gmtime;
@@ -1721,6 +1786,27 @@ switch ($ARGV[0]) {
 		} else {
 			syntax();
 		}
+	}
+    case /^qu.*/ { # query callsign
+		if (exists ($ARGV[1])) {
+			my $callsign = $ARGV[1];
+            my $type = &get_type($callsign);
+            if($type ne 'is_callsign') {
+                syntax();
+            } else {
+                my @id = &get_id($dbh, \%config, $callsign);
+                if($#id < 0) {
+                    die "$callsign not found!\n";
+                } else {
+                    list_log($dbh, \%config, shift(@id));
+                    foreach my $id(@id) {
+                        list_log($dbh, \%config, $id, 1);
+                    }
+                }
+            }
+        } else {
+            syntax();
+        }
 	}
 	case /^li.*/ { # list
 		if (exists ($ARGV[1])) {
