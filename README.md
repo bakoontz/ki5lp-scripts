@@ -1,4 +1,4 @@
-kz5q-scripts
+ag7kz-scripts
 ============
 
 Ham radio-related scripts
