@@ -54,7 +54,7 @@ echo " "
 
 
 %changelog
-* Tue Dec 29 2015 Brian Koontz AG7KZ <brianko gmail com> 1.0-patch1
+* Tue Dec 29 2015 Brian Koontz AG7KZ <ag7kz qsl net> 1.0-patch1
 - Added qu (query) command to search for callsigns in logs
 - Modified list_log to accept $suppress_header flag
 - Added get_id to return id(s) associated with callsign
