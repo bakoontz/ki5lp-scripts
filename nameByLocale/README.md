@@ -1,3 +1,4 @@
+```perl
 # Transform repeater location to call data fields, optionally sorts by
 # location and/or applies offset to numeric location.  Data format
 # read is specific to the CHIRP format of the online RepeaterBook
@@ -35,3 +36,4 @@
 # 
 #
 #####################################################################
+```
